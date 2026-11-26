@@ -1,0 +1,2146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GuardianPulse AI — Safety Telemetry &amp; Response System</title>
+  <style>
+    /* ==================== RESET & DESIGN TOKENS ==================== */
+    :root {
+      --bg-950: #060a13;
+      --bg-900: #0d1424;
+      --bg-850: #131c31;
+      --bg-800: #1b2640;
+      --border: #243252;
+      --text-main: #f1f5f9;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+      --emerald: #10b981;
+      --emerald-bg: rgba(16, 185, 129, 0.14);
+      --sky: #38bdf8;
+      --sky-bg: rgba(56, 189, 248, 0.14);
+      --amber: #f59e0b;
+      --amber-bg: rgba(245, 158, 11, 0.15);
+      --rose: #f43f5e;
+      --rose-bg: rgba(244, 63, 94, 0.16);
+      --purple: #a855f7;
+      --indigo: #6366f1;
+      --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-950);
+      color: var(--text-main);
+      font-family: var(--font-sans);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+      line-height: 1.5;
+    }
+
+    button, input {
+      font-family: inherit;
+    }
+
+    button {
+      cursor: pointer;
+      border: none;
+      transition: all 0.18s ease;
+    }
+
+    button:active {
+      transform: scale(0.97);
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    .mono {
+      font-family: var(--font-mono);
+    }
+
+    /* ==================== ANIMATIONS ==================== */
+    @keyframes pulseDot {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.45; transform: scale(1.25); }
+    }
+
+    @keyframes speakerWave {
+      0%, 100% { height: 6px; }
+      50% { height: 24px; }
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .animate-pulse-dot {
+      animation: pulseDot 1.6s infinite ease-in-out;
+    }
+
+    .animate-spin {
+      animation: spin 0.8s linear infinite;
+    }
+
+    /* ==================== HEADER & NAVIGATION ==================== */
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      background: rgba(13, 20, 36, 0.94);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      padding: 0.75rem 1rem;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+    }
+
+    .header-inner {
+      max-width: 1280px;
+      margin: 0 auto;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .brand-icon {
+      width: 42px;
+      height: 42px;
+      border-radius: 12px;
+      background: var(--emerald-bg);
+      border: 1px solid rgba(16, 185, 129, 0.4);
+      color: var(--emerald);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .brand-icon.danger {
+      background: var(--rose-bg);
+      border-color: rgba(244, 63, 94, 0.45);
+      color: var(--rose);
+    }
+
+    .brand-title-row {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    .brand-title {
+      font-size: 1.05rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      color: #fff;
+    }
+
+    .status-badge {
+      font-family: var(--font-mono);
+      font-size: 0.68rem;
+      font-weight: 700;
+      padding: 0.2rem 0.55rem;
+      border-radius: 999px;
+      background: var(--emerald-bg);
+      color: var(--emerald);
+      border: 1px solid rgba(16, 185, 129, 0.35);
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+
+    .status-badge.warning {
+      background: var(--amber-bg);
+      color: var(--amber);
+      border-color: rgba(245, 158, 11, 0.45);
+    }
+
+    .status-badge.danger {
+      background: var(--rose-bg);
+      color: var(--rose);
+      border-color: rgba(244, 63, 94, 0.45);
+    }
+
+    .brand-sub {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    .top-actions {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    .btn {
+      padding: 0.5rem 0.85rem;
+      border-radius: 10px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      border: 1px solid var(--border);
+      background: var(--bg-850);
+      color: var(--text-main);
+    }
+
+    .btn:hover {
+      background: var(--bg-800);
+    }
+
+    .btn-danger {
+      background: var(--rose-bg);
+      border-color: rgba(244, 63, 94, 0.45);
+      color: #fda4af;
+    }
+
+    .btn-danger:hover {
+      background: rgba(244, 63, 94, 0.28);
+    }
+
+    .btn-success {
+      background: var(--emerald-bg);
+      border-color: rgba(16, 185, 129, 0.45);
+      color: #6ee7b7;
+    }
+
+    .btn-success:hover {
+      background: rgba(16, 185, 129, 0.28);
+    }
+
+    .btn-sky {
+      background: var(--sky-bg);
+      border-color: rgba(56, 189, 248, 0.4);
+      color: #7dd3fc;
+    }
+
+    .btn-sky:hover {
+      background: rgba(56, 189, 248, 0.25);
+    }
+
+    /* Slide Navigation Bar */
+    .slide-nav {
+      max-width: 1280px;
+      margin: 0.65rem auto 0;
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 0.35rem;
+      background: var(--bg-950);
+      padding: 0.3rem;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+    }
+
+    .slide-tab {
+      padding: 0.55rem 0.45rem;
+      border-radius: 9px;
+      background: transparent;
+      color: var(--text-muted);
+      font-size: 0.76rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4rem;
+      text-align: center;
+    }
+
+    .slide-tab:hover {
+      color: #fff;
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    .slide-tab.active {
+      background: var(--bg-800);
+      color: #fff;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .tab-num {
+      font-family: var(--font-mono);
+      font-size: 0.68rem;
+      width: 20px;
+      height: 20px;
+      border-radius: 6px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    @media (max-width: 768px) {
+      .slide-tab span.tab-label {
+        display: none;
+      }
+      .slide-tab span.tab-short {
+        display: inline;
+      }
+    }
+
+    @media (min-width: 769px) {
+      .slide-tab span.tab-short {
+        display: none;
+      }
+    }
+
+    /* ==================== GLOBAL SPEAKER BANNER ==================== */
+    .speaker-banner {
+      background: linear-gradient(90deg, rgba(120, 53, 15, 0.94), rgba(136, 19, 55, 0.94), rgba(15, 23, 42, 0.96));
+      border-bottom: 2px solid rgba(245, 158, 11, 0.65);
+      padding: 0.9rem 1rem;
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
+    }
+
+    .speaker-banner-inner {
+      max-width: 1280px;
+      margin: 0 auto;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+
+    .speaker-left {
+      display: flex;
+      align-items: center;
+      gap: 0.9rem;
+      flex: 1;
+      min-width: 260px;
+    }
+
+    .equalizer-box {
+      width: 48px;
+      height: 48px;
+      border-radius: 14px;
+      background: rgba(245, 158, 11, 0.18);
+      border: 1px solid rgba(251, 191, 36, 0.45);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+      flex-shrink: 0;
+    }
+
+    .eq-bar {
+      width: 4px;
+      background: #fbbf24;
+      border-radius: 99px;
+      animation: speakerWave 0.65s ease-in-out infinite;
+    }
+    .eq-bar:nth-child(2) { animation-delay: 0.15s; background: #fde68a; }
+    .eq-bar:nth-child(3) { animation-delay: 0.3s; background: #fb7185; }
+    .eq-bar:nth-child(4) { animation-delay: 0.1s; background: #fde68a; }
+    .eq-bar:nth-child(5) { animation-delay: 0.25s; }
+
+    .speaker-meta {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 0.25rem;
+    }
+
+    .speaker-tag {
+      font-family: var(--font-mono);
+      font-size: 0.68rem;
+      font-weight: 800;
+      padding: 0.15rem 0.5rem;
+      border-radius: 6px;
+      background: rgba(245, 158, 11, 0.22);
+      color: #fde68a;
+      border: 1px solid rgba(251, 191, 36, 0.4);
+    }
+
+    .countdown-pill {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      font-weight: 800;
+      padding: 0.15rem 0.6rem;
+      border-radius: 999px;
+      background: rgba(244, 63, 94, 0.25);
+      color: #fecdd3;
+      border: 1px solid rgba(244, 63, 94, 0.45);
+    }
+
+    .speaker-quote {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: #fff;
+    }
+
+    .speaker-actions {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .btn-safe-solid {
+      background: #059669;
+      color: #fff;
+      border: 1px solid #10b981;
+      padding: 0.6rem 0.95rem;
+      border-radius: 10px;
+      font-size: 0.8rem;
+      font-weight: 700;
+    }
+    .btn-safe-solid:hover { background: #10b981; }
+
+    .btn-sos-solid {
+      background: #e11d48;
+      color: #fff;
+      border: 1px solid #fb7185;
+      padding: 0.6rem 0.95rem;
+      border-radius: 10px;
+      font-size: 0.8rem;
+      font-weight: 700;
+    }
+    .btn-sos-solid:hover { background: #f43f5e; }
+
+    /* ==================== MAIN CONTAINER & CARDS ==================== */
+    main {
+      flex: 1;
+      max-width: 1280px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 1.5rem 1rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .slide-header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .slide-kicker {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      display: block;
+    }
+
+    .slide-title {
+      font-size: 1.55rem;
+      font-weight: 800;
+      color: #fff;
+      margin-top: 0.15rem;
+    }
+
+    .grid-4 {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .grid-3-2 {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 1.25rem;
+      margin-bottom: 1.25rem;
+    }
+
+    @media (max-width: 1024px) {
+      .grid-4 { grid-template-columns: repeat(2, 1fr); }
+      .grid-3-2 { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 600px) {
+      .grid-4 { grid-template-columns: 1fr; }
+    }
+
+    .card {
+      background: var(--bg-900);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 1.15rem;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.28);
+    }
+
+    .card.danger-card {
+      background: rgba(76, 5, 25, 0.35);
+      border-color: rgba(244, 63, 94, 0.5);
+    }
+
+    .card.safe-card {
+      background: rgba(6, 78, 59, 0.28);
+      border-color: rgba(16, 185, 129, 0.45);
+    }
+
+    .metric-label {
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .metric-val-row {
+      margin-top: 0.65rem;
+      display: flex;
+      align-items: baseline;
+      gap: 0.4rem;
+    }
+
+    .metric-val {
+      font-family: var(--font-mono);
+      font-size: 2.35rem;
+      font-weight: 800;
+      color: #fff;
+      line-height: 1;
+    }
+
+    .metric-unit {
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    .metric-sub {
+      margin-top: 0.55rem;
+      font-size: 0.76rem;
+      font-weight: 600;
+    }
+
+    .canvas-box {
+      width: 100%;
+      height: 290px;
+      background: var(--bg-950);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .canvas-box canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .canvas-watermark {
+      position: absolute;
+      bottom: 10px;
+      right: 12px;
+      font-family: var(--font-mono);
+      font-size: 0.68rem;
+      color: var(--text-dim);
+      background: rgba(6, 10, 19, 0.85);
+      padding: 0.2rem 0.5rem;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+    }
+
+    /* ==================== SLIDE 2: LOCK SCREEN & WIFI TABLE ==================== */
+    .lock-box {
+      max-width: 440px;
+      margin: 2rem auto;
+      text-align: center;
+      padding: 2rem 1.5rem;
+    }
+
+    .lock-icon-circle {
+      width: 64px;
+      height: 64px;
+      border-radius: 18px;
+      background: var(--sky-bg);
+      border: 1px solid rgba(56, 189, 248, 0.35);
+      color: var(--sky);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 1rem;
+    }
+
+    .pin-input {
+      width: 100%;
+      padding: 0.8rem 1rem;
+      border-radius: 12px;
+      background: var(--bg-950);
+      border: 1px solid var(--border);
+      color: #fff;
+      font-family: var(--font-mono);
+      font-size: 1.2rem;
+      text-align: center;
+      letter-spacing: 0.25em;
+      margin: 1.1rem 0 0.75rem;
+      outline: none;
+    }
+
+    .pin-input:focus {
+      border-color: var(--sky);
+    }
+
+    .kv-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 0.45rem 0;
+      border-bottom: 1px solid rgba(36, 50, 82, 0.65);
+      font-family: var(--font-mono);
+      font-size: 0.76rem;
+    }
+    .kv-row:last-child { border-bottom: none; }
+
+    .table-wrap {
+      overflow-x: auto;
+      margin-top: 0.75rem;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-family: var(--font-mono);
+      font-size: 0.76rem;
+    }
+
+    th {
+      padding: 0.6rem 0.75rem;
+      color: var(--text-muted);
+      font-size: 0.68rem;
+      text-transform: uppercase;
+      border-bottom: 1px solid var(--border);
+    }
+
+    td {
+      padding: 0.65rem 0.75rem;
+      border-bottom: 1px solid rgba(36, 50, 82, 0.5);
+    }
+
+    tr.unknown-ap {
+      background: rgba(244, 63, 94, 0.12);
+    }
+
+    /* ==================== SLIDE 3: ALERTS FEED ==================== */
+    .filter-bar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+    }
+
+    .filter-tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.35rem;
+    }
+
+    .filter-btn {
+      padding: 0.4rem 0.75rem;
+      border-radius: 8px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      background: transparent;
+      color: var(--text-muted);
+    }
+
+    .filter-btn.active {
+      background: var(--bg-800);
+      color: #fff;
+      border: 1px solid var(--border);
+    }
+
+    .custom-sms-bar {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+    }
+
+    .text-input {
+      flex: 1;
+      padding: 0.6rem 0.9rem;
+      border-radius: 10px;
+      background: var(--bg-950);
+      border: 1px solid var(--border);
+      color: #fff;
+      font-size: 0.82rem;
+      outline: none;
+    }
+
+    .text-input:focus {
+      border-color: var(--amber);
+    }
+
+    .alerts-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      max-height: 410px;
+      overflow-y: auto;
+      padding-right: 0.25rem;
+    }
+
+    .alert-item {
+      border-radius: 14px;
+      padding: 1rem;
+      background: var(--bg-900);
+      border: 1px solid var(--border);
+    }
+
+    .alert-item.critical {
+      background: rgba(76, 5, 25, 0.32);
+      border-color: rgba(244, 63, 94, 0.48);
+    }
+
+    .alert-item.warning {
+      background: rgba(69, 26, 3, 0.3);
+      border-color: rgba(245, 158, 11, 0.42);
+    }
+
+    /* ==================== SLIDE 4: AI ANALYTICS ==================== */
+    .risk-meter-track {
+      width: 100%;
+      height: 7px;
+      background: var(--bg-950);
+      border-radius: 99px;
+      overflow: hidden;
+      margin: 0.65rem 0;
+      border: 1px solid var(--border);
+    }
+
+    .risk-meter-fill {
+      height: 100%;
+      border-radius: 99px;
+      transition: width 0.4s ease, background-color 0.4s ease;
+    }
+
+    .verdict-banner {
+      border-radius: 18px;
+      padding: 1.5rem;
+      border: 2px solid rgba(16, 185, 129, 0.5);
+      background: rgba(6, 78, 59, 0.25);
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+
+    .verdict-banner.danger {
+      border-color: rgba(244, 63, 94, 0.65);
+      background: rgba(76, 5, 25, 0.38);
+    }
+
+    /* ==================== SLIDE 5: VISION DETECTION ==================== */
+    .media-preview {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+    }
+
+    .upload-hud-box {
+      position: absolute;
+      inset: 22px;
+      border: 2px solid var(--emerald);
+      background: rgba(16, 185, 129, 0.08);
+      border-radius: 12px;
+      padding: 0.65rem;
+      pointer-events: none;
+    }
+
+    .upload-hud-box.danger {
+      border-color: var(--rose);
+      background: rgba(244, 63, 94, 0.12);
+    }
+
+    .detection-pill {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.5rem 0.7rem;
+      border-radius: 9px;
+      background: var(--bg-850);
+      border: 1px solid var(--border);
+      font-family: var(--font-mono);
+      font-size: 0.74rem;
+      margin-bottom: 0.45rem;
+    }
+
+    .detection-pill.danger {
+      background: rgba(244, 63, 94, 0.16);
+      border-color: rgba(244, 63, 94, 0.4);
+      color: #fecdd3;
+    }
+
+    /* ==================== FOOTER NAVIGATION ==================== */
+    footer {
+      margin-top: 1.75rem;
+      padding-top: 1rem;
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+
+    .dots {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 99px;
+      background: var(--bg-800);
+      border: 1px solid var(--border);
+    }
+
+    .dot.active {
+      width: 30px;
+      background: var(--emerald);
+      border-color: var(--emerald);
+    }
+
+    .dot.active.danger {
+      background: var(--rose);
+      border-color: var(--rose);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ==================== TOP HEADER & SLIDE TABS ==================== -->
+  <header>
+    <div class="header-inner">
+      <div class="brand">
+        <div id="brand-icon" class="brand-icon">
+          <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M22 12h-4l-3 9L9 3l-3 9H2" />
+          </svg>
+        </div>
+        <div>
+          <div class="brand-title-row">
+            <h1 class="brand-title">GuardianPulse AI — Safety Telemetry &amp; Response System</h1>
+            <span id="global-status-badge" class="status-badge">
+              <span class="animate-pulse-dot">●</span> SYSTEM MONITORING
+            </span>
+          </div>
+          <p class="brand-sub">5-Slide Multi-Sensor Biometric, NEO-6M GPS, Wi-Fi Recon, Speaker Check-In &amp; Vision AI</p>
+        </div>
+      </div>
+
+      <div class="top-actions">
+        <button id="speaker-mute-btn" onclick="toggleSpeakerMute()" class="btn btn-sky" title="Toggle Device Speaker Audio">
+          <span id="speaker-mute-label">🔊 Device Speaker: ON</span>
+        </button>
+        <button onclick="triggerEmergencySimulation()" class="btn btn-danger">
+          ⚠ Simulate Emergency
+        </button>
+        <button onclick="resetToNormalMode()" class="btn btn-success">
+          ✓ Reset Normal
+        </button>
+      </div>
+    </div>
+
+    <!-- 5-Slide Navigation Bar -->
+    <nav class="slide-nav" aria-label="Dashboard Slides">
+      <button onclick="goToSlide(0)" id="tab-0" class="slide-tab active">
+        <span class="tab-num">1</span>
+        <span class="tab-label">Pulse Rate Monitor</span>
+        <span class="tab-short">Pulse</span>
+      </button>
+      <button onclick="goToSlide(1)" id="tab-1" class="slide-tab">
+        <span class="tab-num">2</span>
+        <span class="tab-label">Live Location &amp; Wi-Fi</span>
+        <span class="tab-short">GPS/Wi-Fi</span>
+      </button>
+      <button onclick="goToSlide(2)" id="tab-2" class="slide-tab">
+        <span class="tab-num">3</span>
+        <span class="tab-label">Emergency Alerts (<span id="tab-alert-count">3</span>)</span>
+        <span class="tab-short">Alerts</span>
+      </button>
+      <button onclick="goToSlide(3)" id="tab-3" class="slide-tab">
+        <span class="tab-num">4</span>
+        <span class="tab-label">AI Analytics</span>
+        <span class="tab-short">AI Check</span>
+      </button>
+      <button onclick="goToSlide(4)" id="tab-4" class="slide-tab">
+        <span class="tab-num">5</span>
+        <span class="tab-label">Image &amp; Video Detection</span>
+        <span class="tab-short">Vision</span>
+      </button>
+    </nav>
+  </header>
+
+  <!-- ==================== GLOBAL DEVICE SPEAKER CHECK-IN BANNER ==================== -->
+  <div id="speaker-banner" class="speaker-banner hidden" role="alert">
+    <div class="speaker-banner-inner">
+      <div class="speaker-left">
+        <div class="equalizer-box" aria-hidden="true">
+          <span class="eq-bar"></span>
+          <span class="eq-bar"></span>
+          <span class="eq-bar"></span>
+          <span class="eq-bar"></span>
+          <span class="eq-bar"></span>
+        </div>
+        <div>
+          <div class="speaker-meta">
+            <span class="speaker-tag">🔊 WEARABLE SPEAKER BROADCASTING</span>
+            <span id="speaker-countdown" class="countdown-pill">Auto-SOS in 30s</span>
+          </div>
+          <p id="speaker-message-text" class="speaker-quote">
+            "Attention. Unusual vital signs, location separation, or visual hazard detected. Are you actually in real danger? Please respond now."
+          </p>
+        </div>
+      </div>
+
+      <div class="speaker-actions">
+        <button onclick="repeatSpeakerVoice()" class="btn">↻ Repeat Voice</button>
+        <button onclick="handleSpeakerUserResponse(false)" class="btn-safe-solid">✓ I'm Safe (False Alarm)</button>
+        <button onclick="handleSpeakerUserResponse(true)" class="btn-sos-solid">🚨 Yes, I Am In Danger!</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== MAIN SLIDE STAGE ==================== -->
+  <main>
+
+    <!-- ==================== SLIDE 1: PULSE RATE MONITOR ==================== -->
+    <section id="slide-0">
+      <div class="slide-header">
+        <div>
+          <span class="slide-kicker" style="color: var(--emerald);">Slide 01 / 05 • Biometric Sensor Stream</span>
+          <h2 class="slide-title">Pulse Rate Monitor (MAX30102)</h2>
+        </div>
+        <div class="top-actions">
+          <button onclick="setPulsePreset('normal')" class="btn btn-success">Normal Resting</button>
+          <button onclick="setPulsePreset('spike')" class="btn btn-danger">Elevated Stress Spike</button>
+        </div>
+      </div>
+
+      <div class="grid-4">
+        <div id="card-bpm" class="card">
+          <div class="metric-label"><span>Heart Rate (BPM)</span><span>❤️ LIVE</span></div>
+          <div class="metric-val-row">
+            <span id="val-bpm" class="metric-val">76</span>
+            <span class="metric-unit">BPM</span>
+          </div>
+          <div id="sub-bpm" class="metric-sub" style="color: var(--emerald);">Normal Resting Rhythm (60–100 BPM)</div>
+        </div>
+
+        <div id="card-spo2" class="card">
+          <div class="metric-label"><span>Blood Oxygen (SpO₂)</span><span style="color: var(--sky);">O₂ SAT</span></div>
+          <div class="metric-val-row">
+            <span id="val-spo2" class="metric-val">98</span>
+            <span class="metric-unit">%</span>
+          </div>
+          <div id="sub-spo2" class="metric-sub" style="color: var(--sky);">Optimal Oxygen Saturation</div>
+        </div>
+
+        <div class="card">
+          <div class="metric-label"><span>Skin Temperature</span><span style="color: var(--amber);">THERMAL</span></div>
+          <div class="metric-val-row">
+            <span id="val-temp" class="metric-val">36.8</span>
+            <span class="metric-unit">°C</span>
+          </div>
+          <div class="metric-sub" style="color: var(--text-muted);">Normal Baseline (36.5°C – 37.3°C)</div>
+        </div>
+
+        <div class="card">
+          <div class="metric-label"><span>Sensor Hardware</span><span style="color: var(--emerald);">ONLINE</span></div>
+          <div class="metric-val-row">
+            <span class="metric-val" style="font-size: 1.55rem;">MAX30102</span>
+          </div>
+          <div class="metric-sub" style="color: var(--text-muted);">100Hz Optical PPG • Battery 89%</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="slide-header" style="margin-bottom: 0.75rem;">
+          <div>
+            <h3 style="font-size: 1rem; font-weight: 700;">Real-Time ECG / Photoplethysmogram (PPG) Waveform</h3>
+            <p style="font-size: 0.78rem; color: var(--text-muted);">Live continuous pulse wave telemetry</p>
+          </div>
+          <span id="wave-status-tag" class="mono" style="font-size: 0.75rem; color: var(--emerald);">● SINUS RHYTHM</span>
+        </div>
+        <div id="pulse-canvas-box" class="canvas-box">
+          <canvas id="pulseCanvas"></canvas>
+          <div class="canvas-watermark">SWEEP: 25mm/s • LIVE HARDWARE STREAM</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== SLIDE 2: LIVE LOCATION & WIFI ==================== -->
+    <section id="slide-1" class="hidden">
+      <div class="slide-header">
+        <div>
+          <span class="slide-kicker" style="color: var(--sky);">Slide 02 / 05 • Encrypted Geolocation &amp; Wi-Fi Recon</span>
+          <h2 class="slide-title">Live Location Monitoring &amp; Surrounding Wi-Fi</h2>
+        </div>
+        <span id="gps-auth-pill" class="status-badge warning">🔒 PIN LOCKED</span>
+      </div>
+
+      <!-- Password Lock Screen -->
+      <div id="gps-lock-screen" class="card lock-box">
+        <div class="lock-icon-circle">
+          <svg width="30" height="30" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+          </svg>
+        </div>
+        <h3 style="font-size: 1.2rem; font-weight: 800;">Password Protected Telemetry</h3>
+        <p style="font-size: 0.82rem; color: var(--text-muted); margin-top: 0.4rem;">
+          Enter Guardian PIN to unlock the <strong>NEO-6M GPS Module</strong>, <strong>Paired Mobile Location</strong>, and <strong>Surrounding Wi-Fi Scanner</strong>.
+        </p>
+        <form onsubmit="unlockLocationSlide(event)">
+          <input id="gps-pin-input" type="password" maxlength="10" placeholder="••••" class="pin-input" />
+          <p id="gps-pin-error" class="hidden" style="color: var(--rose); font-size: 0.78rem; margin-bottom: 0.65rem;">
+            Invalid PIN. Use Demo PIN: 1234
+          </p>
+          <button type="submit" class="btn btn-sky" style="width: 100%; justify-content: center; padding: 0.75rem; font-size: 0.85rem;">
+            🔓 Unlock Location
+          </button>
+        </form>
+        <div style="margin-top: 1rem; padding-top: 0.75rem; border-top: 1px solid var(--border); font-size: 0.76rem; color: var(--text-muted);">
+          Demo PIN: <button type="button" onclick="document.getElementById('gps-pin-input').value='1234'" class="btn" style="padding: 0.2rem 0.55rem; font-family: var(--font-mono);">1234</button>
+        </div>
+      </div>
+
+      <!-- Unlocked Location & Wi-Fi Dashboard -->
+      <div id="gps-unlocked-screen" class="hidden">
+        <div class="card" style="margin-bottom: 1.25rem; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.75rem;">
+          <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem;">
+            <span class="status-badge">● 3D GPS FIX (8 SATELLITES)</span>
+            <span id="gps-sep-text" class="mono" style="font-size: 0.8rem;">
+              NEO-6M ↔ Mobile Separation: <strong style="color: var(--emerald);">4.2 meters</strong>
+            </span>
+          </div>
+          <div class="top-actions">
+            <button onclick="refreshGpsAndWifi()" class="btn btn-sky">↻ Ping Satellites</button>
+            <button onclick="lockLocationSlide()" class="btn">🔒 Lock Map</button>
+          </div>
+        </div>
+
+        <div class="grid-3-2">
+          <!-- Tactical Map Canvas -->
+          <div class="card">
+            <div class="slide-header" style="margin-bottom: 0.65rem;">
+              <span class="mono" style="font-size: 0.75rem; color: var(--text-muted);">TACTICAL RADAR &amp; STREET SECTOR MAP</span>
+              <span class="mono" style="font-size: 0.72rem; color: var(--sky);">GEOFENCE: 250m RADIUS</span>
+            </div>
+            <div id="map-canvas-box" class="canvas-box" style="height: 310px;">
+              <canvas id="mapCanvas"></canvas>
+              <div class="canvas-watermark">NEO-6M UART + PAIRED MOBILE BLE/5G</div>
+            </div>
+          </div>
+
+          <!-- Device Coordinates Cards -->
+          <div style="display: flex; flex-direction: column; gap: 1rem;">
+            <div class="card">
+              <div class="metric-label"><span style="color: var(--emerald);">● NEO-6M GPS MODULE</span><span>WEARABLE</span></div>
+              <div style="margin-top: 0.65rem;">
+                <div class="kv-row"><span style="color: var(--text-muted);">Latitude</span><span id="neo-lat">28.6139° N</span></div>
+                <div class="kv-row"><span style="color: var(--text-muted);">Longitude</span><span id="neo-lng">77.2090° E</span></div>
+                <div class="kv-row"><span style="color: var(--text-muted);">Speed</span><span id="neo-speed">1.2 km/h</span></div>
+                <div class="kv-row"><span style="color: var(--text-muted);">Geofence</span><span id="neo-zone" style="color: var(--emerald);">INSIDE SAFE ZONE</span></div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="metric-label"><span style="color: var(--sky);">● PAIRED MOBILE DEVICE</span><span>COMPANION</span></div>
+              <div style="margin-top: 0.65rem;">
+                <div class="kv-row"><span style="color: var(--text-muted);">Latitude</span><span id="mob-lat">28.6140° N</span></div>
+                <div class="kv-row"><span style="color: var(--text-muted);">Longitude</span><span id="mob-lng">77.2091° E</span></div>
+                <div class="kv-row"><span style="color: var(--text-muted);">Link Status</span><span id="mob-link" style="color: var(--sky);">CO-LOCATED (BLE 5.2)</span></div>
+                <div class="kv-row"><span style="color: var(--text-muted);">Battery</span><span>84% • 5G Strong</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Surrounding Wi-Fi Devices Scanner -->
+        <div class="card">
+          <div class="slide-header" style="margin-bottom: 0.5rem;">
+            <div>
+              <h3 style="font-size: 1rem; font-weight: 700;">Surrounding Wi-Fi Devices &amp; Access Points Scanner</h3>
+              <p style="font-size: 0.76rem; color: var(--text-muted);">IEEE 802.11 2.4GHz / 5GHz Beacon &amp; Probe Receiver</p>
+            </div>
+            <button onclick="scanWifiNetworks()" class="btn btn-sky">
+              <span id="wifi-spin-icon">📡</span> <span id="wifi-scan-text">Scan Wi-Fi</span>
+            </button>
+          </div>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>SSID / Device Name</th>
+                  <th>BSSID MAC Address</th>
+                  <th>Signal (dBm)</th>
+                  <th>Est. Distance</th>
+                  <th>Security</th>
+                  <th>Classification</th>
+                </tr>
+              </thead>
+              <tbody id="wifi-table-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== SLIDE 3: EMERGENCY ALERTS & SMS LOG ==================== -->
+    <section id="slide-2" class="hidden">
+      <div class="slide-header">
+        <div>
+          <span class="slide-kicker" style="color: var(--amber);">Slide 03 / 05 • Incident &amp; SMS Dispatch Feed</span>
+          <h2 class="slide-title">Emergency Alerts &amp; Messages</h2>
+        </div>
+        <div class="top-actions">
+          <button onclick="startDeviceSpeakerCheckIn('Manual Guardian Voice Check-In')" class="btn" style="border-color: rgba(245,158,11,0.5); color: #fcd34d;">
+            🔊 Ask User via Speaker
+          </button>
+          <button onclick="sendManualSosAlert()" class="btn-sos-solid">
+            🚨 Send Manual SOS Alert
+          </button>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom: 1rem;">
+        <div class="filter-bar">
+          <div class="filter-tabs">
+            <button onclick="setAlertFilter('all')" id="f-all" class="filter-btn active">All</button>
+            <button onclick="setAlertFilter('critical')" id="f-critical" class="filter-btn">Critical SOS</button>
+            <button onclick="setAlertFilter('sensor')" id="f-sensor" class="filter-btn">Sensor / GPS</button>
+            <button onclick="setAlertFilter('speaker')" id="f-speaker" class="filter-btn">Speaker / User</button>
+          </div>
+          <span class="mono" style="font-size: 0.74rem; color: var(--emerald);">SMS Gateway: ACTIVE (+91-98XXX-XXXXX)</span>
+        </div>
+
+        <form onsubmit="sendCustomEmergencyMessage(event)" class="custom-sms-bar">
+          <input id="custom-msg-input" type="text" placeholder="Type a custom emergency message or guardian note to dispatch..." class="text-input" />
+          <button type="submit" class="btn btn-sky">Send Message</button>
+        </form>
+      </div>
+
+      <div id="alerts-feed" class="alerts-list"></div>
+    </section>
+
+    <!-- ==================== SLIDE 4: AI ANALYTICS (MULTI-SLIDE FUSION ENGINE) ==================== -->
+    <section id="slide-3" class="hidden">
+      <div class="slide-header">
+        <div>
+          <span class="slide-kicker" style="color: var(--purple);">Slide 04 / 05 • Cross-Slide Multi-Modal Threat Fusion</span>
+          <h2 class="slide-title">AI Safety Analytics Engine</h2>
+        </div>
+        <div class="top-actions">
+          <button onclick="startDeviceSpeakerCheckIn('AI Analytics Verification Request')" class="btn" style="border-color: rgba(245,158,11,0.5); color: #fcd34d;">
+            🔊 Ask User via Speaker
+          </button>
+          <button onclick="evaluateAiFusion(true)" class="btn btn-sky">↻ Re-Run AI Fusion</button>
+        </div>
+      </div>
+
+      <!-- 4 Slide Input Risk Cards -->
+      <div class="grid-4">
+        <div class="card">
+          <div class="metric-label"><span>Slide 1: Vitals</span><span id="ai-risk-1" class="mono">RISK: 8%</span></div>
+          <div class="risk-meter-track"><div id="ai-bar-1" class="risk-meter-fill" style="width: 8%; background: var(--emerald);"></div></div>
+          <p id="ai-note-1" style="font-size: 0.76rem; color: var(--text-muted);">76 BPM resting pulse &amp; 98% SpO₂ within normal limits.</p>
+        </div>
+
+        <div class="card">
+          <div class="metric-label"><span>Slide 2: GPS &amp; Wi-Fi</span><span id="ai-risk-2" class="mono">RISK: 5%</span></div>
+          <div class="risk-meter-track"><div id="ai-bar-2" class="risk-meter-fill" style="width: 5%; background: var(--emerald);"></div></div>
+          <p id="ai-note-2" style="font-size: 0.76rem; color: var(--text-muted);">NEO-6M module &amp; mobile co-located (4.2m) inside safe zone.</p>
+        </div>
+
+        <div class="card">
+          <div class="metric-label"><span>Slide 3: Alerts &amp; Voice</span><span id="ai-risk-3" class="mono">RISK: 0%</span></div>
+          <div class="risk-meter-track"><div id="ai-bar-3" class="risk-meter-fill" style="width: 0%; background: var(--emerald);"></div></div>
+          <p id="ai-note-3" style="font-size: 0.76rem; color: var(--text-muted);">Zero unresolved critical SOS alerts in dispatch feed.</p>
+        </div>
+
+        <div class="card">
+          <div class="metric-label"><span>Slide 5: Vision AI</span><span id="ai-risk-4" class="mono">RISK: 4%</span></div>
+          <div class="risk-meter-track"><div id="ai-bar-4" class="risk-meter-fill" style="width: 4%; background: var(--emerald);"></div></div>
+          <p id="ai-note-4" style="font-size: 0.76rem; color: var(--text-muted);">Camera AI confirms upright walking posture &amp; clear surroundings.</p>
+        </div>
+      </div>
+
+      <!-- Overall AI Conclusion Banner -->
+      <div id="ai-verdict-banner" class="verdict-banner">
+        <div style="max-width: 780px;">
+          <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; margin-bottom: 0.35rem;">
+            <span class="mono" style="font-size: 0.72rem; color: var(--text-muted);">MULTI-SLIDE FUSION VERDICT</span>
+            <span id="ai-threat-pill" class="status-badge">THREAT CONFIDENCE: 4% (SAFE)</span>
+          </div>
+          <h3 id="ai-verdict-heading" style="font-size: 1.45rem; font-weight: 800; color: var(--emerald);">
+            PERSON IS SAFE — No Danger Detected
+          </h3>
+          <ul id="ai-reasoning-list" style="margin-top: 0.65rem; padding-left: 1.15rem; font-size: 0.82rem; color: var(--text-main); display: flex; flex-direction: column; gap: 0.3rem;">
+            <li>Slide 1 Biometrics confirm steady sinus rhythm and healthy oxygenation.</li>
+            <li>Slide 2 NEO-6M GPS and paired mobile device are together inside the safe geofence.</li>
+            <li>Slide 3 &amp; Slide 5 report zero distress messages or visual hazards.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== SLIDE 5: IMAGE & VIDEO DETECTION ==================== -->
+    <section id="slide-4" class="hidden">
+      <div class="slide-header">
+        <div>
+          <span class="slide-kicker" style="color: var(--indigo);">Slide 05 / 05 • Edge Computer Vision AI</span>
+          <h2 class="slide-title">Image &amp; Video Danger Detection</h2>
+        </div>
+        <div class="top-actions">
+          <label class="btn btn-sky" style="cursor: pointer;">
+            📁 Upload Image / Video
+            <input id="media-upload-input" type="file" accept="image/*,video/*" onchange="handleMediaFileUpload(event)" class="hidden" />
+          </label>
+          <button id="back-to-cam-btn" onclick="setCameraPreset('normal')" class="btn hidden">↻ Live Camera</button>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom: 1rem; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.5rem;">
+        <div class="top-actions">
+          <span class="mono" style="font-size: 0.74rem; color: var(--text-muted);">Camera Scenarios:</span>
+          <button onclick="setCameraPreset('normal')" class="btn btn-success">Normal Safe Street</button>
+          <button onclick="setCameraPreset('fall')" class="btn btn-danger">Fall / Person Down Detected</button>
+          <button onclick="setCameraPreset('hazard')" class="btn btn-danger">Aggressive Approach / Hazard</button>
+        </div>
+        <span class="mono" style="font-size: 0.74rem; color: var(--indigo);">YOLOv8-Guard Edge Inference • 30 FPS</span>
+      </div>
+
+      <div class="grid-3-2">
+        <div class="card">
+          <div class="slide-header" style="margin-bottom: 0.65rem;">
+            <span id="cam-feed-title" class="mono" style="font-size: 0.75rem; color: var(--text-muted);">ESP32-CAM WEARABLE FEED • LIVE</span>
+            <span id="cam-hud-badge" class="status-badge">● CLEAR SCENE</span>
+          </div>
+          <div id="vision-box" class="canvas-box" style="height: 315px; display: flex; align-items: center; justify-content: center;">
+            <canvas id="visionCanvas"></canvas>
+            <img id="uploaded-img" alt="Uploaded scan preview" class="media-preview hidden" />
+            <video id="uploaded-vid" controls loop muted playsinline class="media-preview hidden"></video>
+            <div id="upload-hud" class="upload-hud-box hidden">
+              <span id="upload-hud-label" class="status-badge">✓ VERIFIED SAFE (98.1%)</span>
+            </div>
+          </div>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 1rem;">
+          <div id="vision-summary-card" class="card safe-card">
+            <div class="metric-label"><span>Vision AI Conclusion</span><span id="vision-badge">SAFE</span></div>
+            <h3 id="vision-heading" style="font-size: 1.05rem; font-weight: 800; color: var(--emerald); margin-top: 0.45rem;">
+              Normal Safe Street Environment
+            </h3>
+            <p id="vision-desc" style="font-size: 0.78rem; color: var(--text-main); margin-top: 0.35rem;">
+              Upright pedestrian movement detected. Zero falls, collisions, or aggressive proximity hazards observed.
+            </p>
+          </div>
+
+          <div class="card">
+            <div class="metric-label" style="margin-bottom: 0.65rem;"><span>Detected Objects &amp; Confidence</span><span>LIVE</span></div>
+            <div id="vision-objects-list"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== FOOTER SLIDE CONTROLS ==================== -->
+    <footer>
+      <button onclick="prevSlide()" class="btn">← Previous Slide</button>
+      <div class="dots">
+        <button onclick="goToSlide(0)" id="dot-0" class="dot active" title="Slide 1"></button>
+        <button onclick="goToSlide(1)" id="dot-1" class="dot" title="Slide 2"></button>
+        <button onclick="goToSlide(2)" id="dot-2" class="dot" title="Slide 3"></button>
+        <button onclick="goToSlide(3)" id="dot-3" class="dot" title="Slide 4"></button>
+        <button onclick="goToSlide(4)" id="dot-4" class="dot" title="Slide 5"></button>
+      </div>
+      <button onclick="nextSlide()" class="btn">Next Slide →</button>
+    </footer>
+  </main>
+
+  <!-- ==================== JAVASCRIPT TELEMETRY & AI ENGINE ==================== -->
+  <script>
+    const state = {
+      slide: 0,
+      totalSlides: 5,
+      emergencyMode: false,
+      confirmedDanger: false,
+      gpsUnlocked: false,
+      speakerMuted: false,
+      speakerActive: false,
+      countdown: 30,
+      timerId: null,
+      speakerState: 'idle', // 'idle' | 'awaiting' | 'safe' | 'confirmed' | 'timeout'
+      // Slide 1 Vitals
+      bpm: 76,
+      spo2: 98,
+      temp: 36.8,
+      // Slide 2 GPS & Wi-Fi
+      neoLat: 28.6139,
+      neoLng: 77.2090,
+      mobLat: 28.6140,
+      mobLng: 77.2091,
+      distanceMeters: 4.2,
+      wifiList: [
+        { ssid: 'Home_Fiber_5G', mac: 'A4:2B:B0:91:4E:10', rssi: -45, sec: 'WPA3', safe: true },
+        { ssid: 'Guardian_Phone_AP', mac: '3C:06:30:D2:88:1F', rssi: -41, sec: 'WPA2', safe: true },
+        { ssid: 'Airtel_Xstream_2.4G', mac: 'D8:47:32:7A:19:C4', rssi: -67, sec: 'WPA2', safe: true },
+        { ssid: 'Neighbor_Mesh_WiFi', mac: '50:C7:BF:3E:A2:09', rssi: -79, sec: 'WPA2', safe: true }
+      ],
+      // Slide 3 Alerts
+      alertFilter: 'all',
+      alerts: [
+        { id: 1001, cat: 'sensor', severity: 'normal', title: 'MAX30102 & NEO-6M Hardware Online', msg: 'Biometric pulse sensor and satellite GPS receiver initialized successfully.', time: '09:10 AM' },
+        { id: 1002, cat: 'speaker', severity: 'normal', title: 'Wearable Speaker Self-Test Passed', msg: 'Audio amplifier & TTS voice check-in module ready.', time: '09:12 AM' },
+        { id: 1003, cat: 'sensor', severity: 'warning', title: 'Brief Indoor GPS Multipath Drift', msg: 'Satellite count dipped to 5 indoors; recovered to 8 satellites.', time: '09:45 AM' }
+      ],
+      // Slide 5 Vision
+      cameraPreset: 'normal', // 'normal' | 'fall' | 'hazard' | 'upload'
+      visionDanger: false,
+      uploadedName: ''
+    };
+
+    /* -------------------- 1. SLIDE NAVIGATION -------------------- */
+    function goToSlide(idx) {
+      if (idx < 0 || idx >= state.totalSlides) return;
+      state.slide = idx;
+      for (let i = 0; i < state.totalSlides; i++) {
+        const sec = document.getElementById(`slide-${i}`);
+        const tab = document.getElementById(`tab-${i}`);
+        const dot = document.getElementById(`dot-${i}`);
+        const active = i === idx;
+        sec.classList.toggle('hidden', !active);
+        tab.classList.toggle('active', active);
+        dot.classList.toggle('active', active);
+        dot.classList.toggle('danger', active && (state.emergencyMode || state.visionDanger || state.confirmedDanger));
+      }
+      if (idx === 0) resizePulseCanvas();
+      if (idx === 1 && state.gpsUnlocked) drawMapCanvas();
+      if (idx === 3) evaluateAiFusion(true);
+      if (idx === 4) resizeVisionCanvas();
+    }
+
+    function nextSlide() { goToSlide((state.slide + 1) % state.totalSlides); }
+    function prevSlide() { goToSlide((state.slide - 1 + state.totalSlides) % state.totalSlides); }
+
+    document.addEventListener('keydown', (e) => {
+      if (document.activeElement && document.activeElement.tagName === 'INPUT') return;
+      if (e.key === 'ArrowRight') nextSlide();
+      if (e.key === 'ArrowLeft') prevSlide();
+    });
+
+    /* -------------------- 2. DEVICE SPEAKER & VOICE CHECK-IN -------------------- */
+    function speakAloud(text) {
+      if (state.speakerMuted || !('speechSynthesis' in window)) return;
+      try {
+        window.speechSynthesis.cancel();
+        const u = new SpeechSynthesisUtterance(text);
+        u.rate = 0.98;
+        u.pitch = 1.04;
+        window.speechSynthesis.speak(u);
+      } catch (e) {}
+    }
+
+    function toggleSpeakerMute() {
+      state.speakerMuted = !state.speakerMuted;
+      document.getElementById('speaker-mute-label').textContent = state.speakerMuted
+        ? '🔇 Device Speaker: OFF'
+        : '🔊 Device Speaker: ON';
+      if (state.speakerMuted && 'speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
+    }
+
+    function startDeviceSpeakerCheckIn(triggerReason) {
+      state.speakerActive = true;
+      state.speakerState = 'awaiting';
+      state.countdown = 30;
+
+      const prompt = 'Attention. Unusual vital signs, location separation, or visual hazard detected. Are you actually in real danger? Please respond now.';
+      document.getElementById('speaker-message-text').textContent = `"${prompt}"`;
+      document.getElementById('speaker-countdown').textContent = `Auto-SOS in ${state.countdown}s`;
+      document.getElementById('speaker-banner').classList.remove('hidden');
+
+      addAlert('speaker', 'warning', `Device Speaker Check-In: ${triggerReason}`, 'Speaker asked user: "Are you actually in real danger?" (30s countdown started).');
+      speakAloud(prompt);
+      updateHeaderStatus();
+      evaluateAiFusion(false);
+
+      if (state.timerId) clearInterval(state.timerId);
+      state.timerId = setInterval(() => {
+        state.countdown -= 1;
+        document.getElementById('speaker-countdown').textContent = `Auto-SOS in ${state.countdown}s`;
+        if (state.countdown === 15) {
+          speakAloud('Reminder. Are you actually in real danger? Please respond now.');
+        }
+        if (state.countdown <= 0) {
+          clearInterval(state.timerId);
+          state.timerId = null;
+          escalateSpeakerTimeout();
+        }
+      }, 1000);
+    }
+
+    function repeatSpeakerVoice() {
+      speakAloud('Attention. Unusual vital signs, location separation, or visual hazard detected. Are you actually in real danger? Please respond now.');
+    }
+
+    function stopSpeakerBanner() {
+      state.speakerActive = false;
+      if (state.timerId) {
+        clearInterval(state.timerId);
+        state.timerId = null;
+      }
+      if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+      document.getElementById('speaker-banner').classList.add('hidden');
+    }
+
+    function handleSpeakerUserResponse(isDanger) {
+      stopSpeakerBanner();
+      if (isDanger) {
+        state.emergencyMode = true;
+        state.confirmedDanger = true;
+        state.speakerState = 'confirmed';
+        speakAloud('Emergency confirmed. Dispatching immediate SOS alert and live NEO-6M GPS coordinates to your emergency contacts.');
+        addAlert('critical', 'critical', 'USER CONFIRMED DANGER VIA DEVICE SPEAKER', `User pressed "Yes, I Am In Danger!" — Live GPS (${state.neoLat}° N, ${state.neoLng}° E) dispatched via priority SMS.`);
+      } else {
+        state.emergencyMode = false;
+        state.confirmedDanger = false;
+        state.visionDanger = false;
+        state.cameraPreset = 'normal';
+        state.speakerState = 'safe';
+        speakAloud('Confirmed safe. Standing down emergency alarm and resetting sensors to normal.');
+        addAlert('speaker', 'normal', 'User Confirmed Safe (False Alarm)', 'User responded "I\'m Safe" to wearable speaker prompt. All telemetry restored to safe baseline.');
+      }
+      syncAllViews();
+    }
+
+    function escalateSpeakerTimeout() {
+      stopSpeakerBanner();
+      state.emergencyMode = true;
+      state.confirmedDanger = true;
+      state.speakerState = 'timeout';
+      speakAloud('No response received from user. Escalating to full emergency SOS and transmitting live GPS location.');
+      addAlert('critical', 'critical', 'AUTO-SOS ESCALATION: Speaker Check-In Timed Out', `No reply within 30 seconds. Automatic emergency SOS sent with NEO-6M coordinates (${state.neoLat}° N, ${state.neoLng}° E).`);
+      syncAllViews();
+    }
+
+    /* -------------------- 3. GLOBAL EMERGENCY / RESET CONTROLS -------------------- */
+    function triggerEmergencySimulation() {
+      state.emergencyMode = true;
+      state.confirmedDanger = false;
+      state.cameraPreset = 'hazard';
+      state.visionDanger = true;
+      updateTelemetry();
+      addAlert('critical', 'critical', 'MULTI-SENSOR ANOMALY DETECTED', 'Pulse spiked above 145 BPM, NEO-6M GPS separated >180m, and Vision AI detected an environmental hazard.');
+      syncAllViews();
+      startDeviceSpeakerCheckIn('Multi-Sensor & Vision Anomaly');
+    }
+
+    function resetToNormalMode() {
+      stopSpeakerBanner();
+      state.emergencyMode = false;
+      state.confirmedDanger = false;
+      state.speakerState = 'idle';
+      state.cameraPreset = 'normal';
+      state.visionDanger = false;
+      updateTelemetry();
+      addAlert('sensor', 'normal', 'System Reset to Normal Monitoring', 'All biometric, GPS, Wi-Fi, and camera feeds restored to normal baseline.');
+      syncAllViews();
+    }
+
+    function updateHeaderStatus() {
+      const badge = document.getElementById('global-status-badge');
+      const icon = document.getElementById('brand-icon');
+      const inDanger = state.emergencyMode || state.visionDanger || state.confirmedDanger;
+
+      if (state.confirmedDanger) {
+        badge.className = 'status-badge danger';
+        badge.innerHTML = '<span class="animate-pulse-dot">●</span> SOS ACTIVE';
+        icon.classList.add('danger');
+      } else if (inDanger || state.speakerActive) {
+        badge.className = 'status-badge warning';
+        badge.innerHTML = '<span class="animate-pulse-dot">●</span> EMERGENCY CHECK-IN';
+        icon.classList.add('danger');
+      } else {
+        badge.className = 'status-badge';
+        badge.innerHTML = '<span class="animate-pulse-dot">●</span> SYSTEM MONITORING';
+        icon.classList.remove('danger');
+      }
+    }
+
+    /* -------------------- 4. SLIDE 1: PULSE WAVEFORM & VITALS -------------------- */
+    const pulseCanvas = document.getElementById('pulseCanvas');
+    const pCtx = pulseCanvas.getContext('2d');
+    let pulseHistory = [];
+    let wavePhase = 0;
+
+    function resizePulseCanvas() {
+      const box = document.getElementById('pulse-canvas-box');
+      if (!box) return;
+      pulseCanvas.width = box.clientWidth;
+      pulseCanvas.height = box.clientHeight;
+      if (pulseHistory.length === 0) {
+        pulseHistory = new Array(Math.max(120, Math.floor(pulseCanvas.width / 3))).fill(0);
+      }
+    }
+
+    function setPulsePreset(type) {
+      if (type === 'spike') {
+        state.emergencyMode = true;
+        updateTelemetry();
+        addAlert('sensor', 'warning', 'Elevated Pulse Rate Spike (148 BPM)', 'MAX30102 detected sudden tachycardia above threshold.');
+        startDeviceSpeakerCheckIn('Elevated Heart Rate Spike');
+      } else {
+        resetToNormalMode();
+      }
+      syncAllViews();
+    }
+
+    function animatePulseCanvas() {
+      if (!pulseCanvas.width) resizePulseCanvas();
+      const w = pulseCanvas.width;
+      const h = pulseCanvas.height;
+      const midY = h * 0.56;
+      const isSpike = state.bpm > 115;
+
+      wavePhase += isSpike ? 0.35 : 0.17;
+      if (wavePhase > Math.PI * 2) wavePhase -= Math.PI * 2;
+
+      let sample = 0;
+      if (wavePhase < 0.42) sample = Math.sin((wavePhase / 0.42) * Math.PI) * (isSpike ? 0.92 : 0.78);
+      else if (wavePhase < 0.72) sample = -Math.sin(((wavePhase - 0.42) / 0.3) * Math.PI) * 0.25;
+      else if (wavePhase < 1.3) sample = Math.sin(((wavePhase - 0.72) / 0.58) * Math.PI) * 0.28;
+      else sample = (Math.random() - 0.5) * 0.03;
+
+      pulseHistory.push(sample);
+      const maxPts = Math.max(100, Math.floor(w / 3));
+      while (pulseHistory.length > maxPts) pulseHistory.shift();
+
+      pCtx.fillStyle = '#060a13';
+      pCtx.fillRect(0, 0, w, h);
+
+      // Grid
+      pCtx.strokeStyle = '#131c31';
+      pCtx.lineWidth = 1;
+      for (let x = 0; x < w; x += 32) { pCtx.beginPath(); pCtx.moveTo(x, 0); pCtx.lineTo(x, h); pCtx.stroke(); }
+      for (let y = 0; y < h; y += 32) { pCtx.beginPath(); pCtx.moveTo(0, y); pCtx.lineTo(w, y); pCtx.stroke(); }
+
+      // Pulse Line
+      const color = isSpike ? '#f43f5e' : '#10b981';
+      pCtx.strokeStyle = color;
+      pCtx.lineWidth = 2.5;
+      pCtx.beginPath();
+      const step = w / (pulseHistory.length - 1);
+      for (let i = 0; i < pulseHistory.length; i++) {
+        const x = i * step;
+        const y = midY - pulseHistory[i] * (h * 0.38);
+        if (i === 0) pCtx.moveTo(x, y);
+        else pCtx.lineTo(x, y);
+      }
+      pCtx.stroke();
+
+      // Leading Dot
+      const lx = (pulseHistory.length - 1) * step;
+      const ly = midY - pulseHistory[pulseHistory.length - 1] * (h * 0.38);
+      pCtx.fillStyle = color;
+      pCtx.beginPath();
+      pCtx.arc(lx, ly, 4.5, 0, Math.PI * 2);
+      pCtx.fill();
+
+      requestAnimationFrame(animatePulseCanvas);
+    }
+
+    function updateTelemetry() {
+      if (state.emergencyMode) {
+        state.bpm = Math.floor(144 + Math.random() * 14);
+        state.spo2 = Math.floor(90 + Math.random() * 3);
+        state.temp = (38.0 + Math.random() * 0.3).toFixed(1);
+        state.neoLat = +(28.6155 + (Math.random() - 0.5) * 0.0001).toFixed(4);
+        state.neoLng = +(77.2112 + (Math.random() - 0.5) * 0.0001).toFixed(4);
+        state.distanceMeters = +(186 + Math.random() * 12).toFixed(1);
+      } else {
+        state.bpm = Math.floor(72 + Math.random() * 11);
+        state.spo2 = Math.floor(97 + Math.random() * 3);
+        state.temp = (36.6 + Math.random() * 0.4).toFixed(1);
+        state.neoLat = +(28.6139 + (Math.random() - 0.5) * 0.0001).toFixed(4);
+        state.neoLng = +(77.2090 + (Math.random() - 0.5) * 0.0001).toFixed(4);
+        state.distanceMeters = +(3.4 + Math.random() * 2.1).toFixed(1);
+      }
+
+      document.getElementById('val-bpm').textContent = state.bpm;
+      document.getElementById('val-spo2').textContent = state.spo2;
+      document.getElementById('val-temp').textContent = state.temp;
+
+      const cardBpm = document.getElementById('card-bpm');
+      const subBpm = document.getElementById('sub-bpm');
+      const waveTag = document.getElementById('wave-status-tag');
+
+      if (state.bpm > 115) {
+        cardBpm.classList.add('danger-card');
+        subBpm.textContent = '⚠ CRITICAL TACHYCARDIA (>140 BPM)';
+        subBpm.style.color = 'var(--rose)';
+        waveTag.textContent = '⚠ ELEVATED STRESS WAVEFORM';
+        waveTag.style.color = 'var(--rose)';
+      } else {
+        cardBpm.classList.remove('danger-card');
+        subBpm.textContent = 'Normal Resting Rhythm (60–100 BPM)';
+        subBpm.style.color = 'var(--emerald)';
+        waveTag.textContent = '● SINUS RHYTHM';
+        waveTag.style.color = 'var(--emerald)';
+      }
+
+      // Slide 2 Telemetry
+      document.getElementById('neo-lat').textContent = `${state.neoLat}° N`;
+      document.getElementById('neo-lng').textContent = `${state.neoLng}° E`;
+      document.getElementById('neo-speed').textContent = state.emergencyMode ? '16.4 km/h (Rapid Drift)' : '1.2 km/h (Walking)';
+      const neoZone = document.getElementById('neo-zone');
+      neoZone.textContent = state.emergencyMode ? 'OUTSIDE SAFE GEOFENCE' : 'INSIDE SAFE ZONE';
+      neoZone.style.color = state.emergencyMode ? 'var(--rose)' : 'var(--emerald)';
+
+      const mobLink = document.getElementById('mob-link');
+      mobLink.textContent = state.emergencyMode ? 'SEPARATED / BLE LOST' : 'CO-LOCATED (BLE 5.2)';
+      mobLink.style.color = state.emergencyMode ? 'var(--rose)' : 'var(--sky)';
+
+      document.getElementById('gps-sep-text').innerHTML = state.emergencyMode
+        ? `NEO-6M ↔ Mobile Separation: <strong style="color: var(--rose);">${state.distanceMeters} meters (ALERT)</strong>`
+        : `NEO-6M ↔ Mobile Separation: <strong style="color: var(--emerald);">${state.distanceMeters} meters</strong>`;
+
+      if (state.gpsUnlocked) drawMapCanvas();
+    }
+
+    /* -------------------- 5. SLIDE 2: PIN LOCK, TACTICAL MAP & WIFI -------------------- */
+    function unlockLocationSlide(e) {
+      e.preventDefault();
+      const pin = document.getElementById('gps-pin-input').value.trim();
+      const err = document.getElementById('gps-pin-error');
+      if (pin === '1234') {
+        state.gpsUnlocked = true;
+        err.classList.add('hidden');
+        document.getElementById('gps-lock-screen').classList.add('hidden');
+        document.getElementById('gps-unlocked-screen').classList.remove('hidden');
+        const pill = document.getElementById('gps-auth-pill');
+        pill.className = 'status-badge';
+        pill.textContent = '🔓 UNLOCKED — LIVE GPS';
+        drawMapCanvas();
+        renderWifiTable();
+      } else {
+        err.classList.remove('hidden');
+      }
+    }
+
+    function lockLocationSlide() {
+      state.gpsUnlocked = false;
+      document.getElementById('gps-pin-input').value = '';
+      document.getElementById('gps-unlocked-screen').classList.add('hidden');
+      document.getElementById('gps-lock-screen').classList.remove('hidden');
+      const pill = document.getElementById('gps-auth-pill');
+      pill.className = 'status-badge warning';
+      pill.textContent = '🔒 PIN LOCKED';
+    }
+
+    function refreshGpsAndWifi() {
+      updateTelemetry();
+      scanWifiNetworks();
+    }
+
+    function drawMapCanvas() {
+      const box = document.getElementById('map-canvas-box');
+      const canvas = document.getElementById('mapCanvas');
+      if (!box || !canvas) return;
+      canvas.width = box.clientWidth;
+      canvas.height = box.clientHeight;
+      const ctx = canvas.getContext('2d');
+      const w = canvas.width;
+      const h = canvas.height;
+      const cx = w * 0.5;
+      const cy = h * 0.5;
+
+      ctx.fillStyle = '#060a13';
+      ctx.fillRect(0, 0, w, h);
+
+      // Tactical Grid
+      ctx.strokeStyle = '#131c31';
+      ctx.lineWidth = 1;
+      for (let x = 0; x < w; x += 36) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke(); }
+      for (let y = 0; y < h; y += 36) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke(); }
+
+      // Stylized Roads
+      ctx.strokeStyle = '#1e293b';
+      ctx.lineWidth = 9;
+      ctx.beginPath();
+      ctx.moveTo(0, h * 0.35); ctx.lineTo(w, h * 0.35);
+      ctx.moveTo(0, h * 0.72); ctx.lineTo(w, h * 0.72);
+      ctx.moveTo(w * 0.3, 0); ctx.lineTo(w * 0.3, h);
+      ctx.moveTo(w * 0.7, 0); ctx.lineTo(w * 0.7, h);
+      ctx.stroke();
+
+      // Geofence Ring
+      const radius = Math.min(w, h) * 0.34;
+      ctx.strokeStyle = state.emergencyMode ? 'rgba(244, 63, 94, 0.45)' : 'rgba(16, 185, 129, 0.4)';
+      ctx.fillStyle = state.emergencyMode ? 'rgba(244, 63, 94, 0.06)' : 'rgba(16, 185, 129, 0.05)';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([6, 6]);
+      ctx.beginPath();
+      ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Coordinates for Mobile & NEO-6M
+      const mobX = cx + 16;
+      const mobY = cy + 12;
+      const neoX = state.emergencyMode ? cx - radius * 1.18 : cx - 12;
+      const neoY = state.emergencyMode ? cy - radius * 0.75 : cy - 8;
+
+      // Link Line
+      ctx.strokeStyle = state.emergencyMode ? '#f43f5e' : '#38bdf8';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([4, 4]);
+      ctx.beginPath();
+      ctx.moveTo(mobX, mobY);
+      ctx.lineTo(neoX, neoY);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Paired Mobile Marker
+      ctx.fillStyle = '#38bdf8';
+      ctx.beginPath(); ctx.arc(mobX, mobY, 7, 0, Math.PI * 2); ctx.fill();
+      ctx.font = 'bold 11px monospace';
+      ctx.fillStyle = '#7dd3fc';
+      ctx.fillText('PAIRED MOBILE', mobX + 10, mobY + 4);
+
+      // NEO-6M Marker
+      ctx.fillStyle = state.emergencyMode ? '#f43f5e' : '#10b981';
+      ctx.beginPath(); ctx.arc(neoX, neoY, 8, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = state.emergencyMode ? '#fda4af' : '#6ee7b7';
+      ctx.fillText('NEO-6M GPS', neoX + 11, neoY - 4);
+    }
+
+    function renderWifiTable() {
+      const tbody = document.getElementById('wifi-table-body');
+      if (!tbody) return;
+
+      const list = state.wifiList.map(w => {
+        const rssi = Math.min(-34, Math.max(-90, w.rssi + Math.floor((Math.random() - 0.5) * 4)));
+        const dist = Math.pow(10, (-40 - rssi) / 24).toFixed(1) + 'm';
+        return { ...w, rssi, dist };
+      });
+
+      if (state.emergencyMode) {
+        list.unshift({
+          ssid: 'UNKNOWN_HOTSPOT_911',
+          mac: 'DE:AD:BE:EF:77:21',
+          rssi: -43,
+          dist: '2.5m',
+          sec: 'OPEN (UNSECURED)',
+          safe: false
+        });
+      }
+
+      tbody.innerHTML = list.map(ap => {
+        const bars = ap.rssi > -52 ? '▂▄▆█' : ap.rssi > -70 ? '▂▄▆_' : '▂▄__';
+        const sigColor = ap.rssi > -52 ? 'var(--emerald)' : ap.rssi > -70 ? 'var(--amber)' : 'var(--text-muted)';
+        return `
+          <tr class="${ap.safe ? '' : 'unknown-ap'}">
+            <td style="font-weight: 700; color: ${ap.safe ? '#fff' : 'var(--rose)'};">${ap.ssid}</td>
+            <td style="color: var(--text-muted);">${ap.mac}</td>
+            <td style="color: ${sigColor}; font-weight: 700;">${bars} ${ap.rssi} dBm</td>
+            <td>${ap.dist}</td>
+            <td style="color: var(--text-muted);">${ap.sec}</td>
+            <td>
+              <span class="status-badge ${ap.safe ? '' : 'danger'}">
+                ${ap.safe ? 'KNOWN BEACON' : 'UNKNOWN PROXIMITY'}
+              </span>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function scanWifiNetworks() {
+      const txt = document.getElementById('wifi-scan-text');
+      const icon = document.getElementById('wifi-spin-icon');
+      txt.textContent = 'Scanning...';
+      icon.classList.add('animate-spin');
+      setTimeout(() => {
+        renderWifiTable();
+        txt.textContent = 'Scan Wi-Fi';
+        icon.classList.remove('animate-spin');
+      }, 550);
+    }
+
+    /* -------------------- 6. SLIDE 3: EMERGENCY ALERTS & SMS LOG -------------------- */
+    function addAlert(cat, severity, title, msg) {
+      const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      state.alerts.unshift({ id: Date.now(), cat, severity, title, msg, time });
+      document.getElementById('tab-alert-count').textContent = state.alerts.length;
+      renderAlertsList();
+    }
+
+    function setAlertFilter(filter) {
+      state.alertFilter = filter;
+      ['all', 'critical', 'sensor', 'speaker'].forEach(f => {
+        document.getElementById(`f-${f}`).classList.toggle('active', f === filter);
+      });
+      renderAlertsList();
+    }
+
+    function sendManualSosAlert() {
+      state.emergencyMode = true;
+      state.confirmedDanger = true;
+      state.speakerState = 'confirmed';
+      stopSpeakerBanner();
+      speakAloud('Manual SOS dispatched. Sending your live NEO-6M GPS coordinates to emergency contacts.');
+      addAlert('critical', 'critical', 'MANUAL SOS ALERT DISPATCHED', `User triggered manual SOS beacon at GPS (${state.neoLat}° N, ${state.neoLng}° E). Priority SMS sent.`);
+      syncAllViews();
+    }
+
+    function sendCustomEmergencyMessage(e) {
+      e.preventDefault();
+      const input = document.getElementById('custom-msg-input');
+      const val = input.value.trim();
+      if (!val) return;
+      input.value = '';
+      addAlert('speaker', 'warning', 'Custom Guardian / User Message Sent', `"${val}" — Dispatched via SMS Gateway.`);
+    }
+
+    function renderAlertsList() {
+      const box = document.getElementById('alerts-feed');
+      const items = state.alerts.filter(a => {
+        if (state.alertFilter === 'all') return true;
+        if (state.alertFilter === 'critical') return a.severity === 'critical';
+        return a.cat === state.alertFilter;
+      });
+
+      box.innerHTML = items.map(a => `
+        <div class="alert-item ${a.severity === 'critical' ? 'critical' : a.severity === 'warning' ? 'warning' : ''}">
+          <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 0.5rem;">
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+              <span class="status-badge ${a.severity === 'critical' ? 'danger' : a.severity === 'warning' ? 'warning' : ''}">
+                ${a.severity.toUpperCase()}
+              </span>
+              <strong style="font-size: 0.9rem;">${a.title}</strong>
+            </div>
+            <span class="mono" style="font-size: 0.74rem; color: var(--text-muted);">${a.time}</span>
+          </div>
+          <p style="font-size: 0.82rem; color: var(--text-main); margin-top: 0.45rem;">${a.msg}</p>
+        </div>
+      `).join('');
+    }
+
+    /* -------------------- 7. SLIDE 4: AI ANALYTICS FUSION ENGINE -------------------- */
+    function evaluateAiFusion(flash) {
+      const r1 = state.bpm > 115 ? 92 : 8;
+      const r2 = state.distanceMeters > 50 ? 89 : 5;
+      const r3 = state.confirmedDanger ? 99 : (state.speakerActive ? 65 : (state.emergencyMode ? 80 : 0));
+      const r4 = state.visionDanger ? 94 : 4;
+
+      const maxRisk = Math.max(r1, r2, r3, r4);
+      const overallDanger = maxRisk >= 60;
+
+      const setBar = (idx, val, note) => {
+        const col = val >= 60 ? 'var(--rose)' : val >= 30 ? 'var(--amber)' : 'var(--emerald)';
+        document.getElementById(`ai-risk-${idx}`).textContent = `RISK: ${val}%`;
+        document.getElementById(`ai-risk-${idx}`).style.color = col;
+        const bar = document.getElementById(`ai-bar-${idx}`);
+        bar.style.width = `${val}%`;
+        bar.style.backgroundColor = col;
+        document.getElementById(`ai-note-${idx}`).textContent = note;
+      };
+
+      setBar(1, r1, r1 >= 60 ? `Elevated heart rate (${state.bpm} BPM) & SpO₂ (${state.spo2}%) indicate distress.` : `${state.bpm} BPM resting pulse & ${state.spo2}% SpO₂ within normal limits.`);
+      setBar(2, r2, r2 >= 60 ? `NEO-6M GPS separated by ${state.distanceMeters}m + unknown Wi-Fi detected.` : `NEO-6M module & mobile co-located (${state.distanceMeters}m) inside safe zone.`);
+      setBar(3, r3, state.confirmedDanger ? 'Confirmed SOS active in Slide 3 / User confirmed danger via speaker.' : (state.speakerActive ? 'Awaiting user voice response on wearable speaker.' : 'Zero unresolved critical SOS alerts in dispatch feed.'));
+      setBar(4, r4, r4 >= 60 ? `Slide 5 Vision AI detected visual hazard (${state.cameraPreset}).` : 'Camera AI confirms upright walking posture & clear surroundings.');
+
+      const banner = document.getElementById('ai-verdict-banner');
+      const pill = document.getElementById('ai-threat-pill');
+      const head = document.getElementById('ai-verdict-heading');
+      const list = document.getElementById('ai-reasoning-list');
+
+      if (flash) {
+        banner.style.opacity = '0.55';
+        setTimeout(() => { banner.style.opacity = '1'; }, 180);
+      }
+
+      if (state.confirmedDanger) {
+        banner.className = 'verdict-banner danger';
+        pill.className = 'status-badge danger';
+        pill.textContent = 'THREAT CONFIDENCE: 99.8% (CONFIRMED)';
+        head.style.color = 'var(--rose)';
+        head.textContent = 'CONFIRMED IN DANGER — Emergency SOS Active';
+        list.innerHTML = `
+          <li>Multi-slide fusion confirms acute danger across vitals (${state.bpm} BPM), GPS (${state.distanceMeters}m), and/or Vision AI.</li>
+          <li>User confirmed danger or failed to respond to the 30-second wearable speaker check-in.</li>
+          <li>Priority emergency dispatch and live NEO-6M GPS coordinates transmitted.</li>
+        `;
+      } else if (overallDanger) {
+        banner.className = 'verdict-banner danger';
+        pill.className = 'status-badge warning';
+        pill.textContent = `THREAT CONFIDENCE: ${maxRisk}% (VERIFYING)`;
+        head.style.color = 'var(--amber)';
+        head.textContent = 'POTENTIAL DANGER — Verifying via Device Speaker';
+        list.innerHTML = `
+          <li>Anomalies detected across Slide 1 (${state.bpm} BPM), Slide 2 (${state.distanceMeters}m GPS), or Slide 5 Vision AI.</li>
+          <li>Wearable speaker is actively asking the user to confirm if they are in real danger.</li>
+        `;
+      } else {
+        banner.className = 'verdict-banner';
+        pill.className = 'status-badge';
+        pill.textContent = `THREAT CONFIDENCE: ${maxRisk}% (SAFE)`;
+        head.style.color = 'var(--emerald)';
+        head.textContent = 'PERSON IS SAFE — No Danger Detected';
+        list.innerHTML = `
+          <li>Slide 1 Biometrics confirm steady sinus rhythm (${state.bpm} BPM) and healthy oxygenation (${state.spo2}%).</li>
+          <li>Slide 2 NEO-6M GPS and paired mobile device are together (${state.distanceMeters}m) inside the safe geofence.</li>
+          <li>Slide 3 &amp; Slide 5 report zero distress messages or visual hazards.</li>
+        `;
+      }
+    }
+
+    /* -------------------- 8. SLIDE 5: IMAGE & VIDEO DETECTION -------------------- */
+    const visionCanvas = document.getElementById('visionCanvas');
+    const vCtx = visionCanvas.getContext('2d');
+    let camTick = 0;
+
+    function resizeVisionCanvas() {
+      const box = document.getElementById('vision-box');
+      if (!box) return;
+      visionCanvas.width = box.clientWidth;
+      visionCanvas.height = box.clientHeight;
+    }
+
+    function setCameraPreset(preset) {
+      state.cameraPreset = preset;
+      state.visionDanger = (preset === 'fall' || preset === 'hazard');
+
+      visionCanvas.classList.remove('hidden');
+      document.getElementById('uploaded-img').classList.add('hidden');
+      const vid = document.getElementById('uploaded-vid');
+      vid.pause();
+      vid.classList.add('hidden');
+      document.getElementById('upload-hud').classList.add('hidden');
+      document.getElementById('back-to-cam-btn').classList.add('hidden');
+      document.getElementById('cam-feed-title').textContent = 'ESP32-CAM WEARABLE FEED • LIVE';
+
+      updateVisionCards();
+      syncAllViews();
+
+      if (state.visionDanger) {
+        const label = preset === 'fall' ? 'Fall / Person Down Detected' : 'Aggressive Approach / Hazard';
+        addAlert('sensor', 'critical', `VISION AI ALERT: ${label}`, 'Wearable camera AI detected a physical safety hazard in frame.');
+        startDeviceSpeakerCheckIn(`Camera Vision: ${label}`);
+      }
+    }
+
+    function handleMediaFileUpload(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const url = URL.createObjectURL(file);
+      const isVideo = file.type.startsWith('video/');
+      state.cameraPreset = 'upload';
+      state.uploadedName = file.name;
+      state.visionDanger = /danger|fall|hazard|fire|crash|threat|fight|sos/i.test(file.name) || state.emergencyMode;
+
+      visionCanvas.classList.add('hidden');
+      const img = document.getElementById('uploaded-img');
+      const vid = document.getElementById('uploaded-vid');
+      const hud = document.getElementById('upload-hud');
+      const hudLabel = document.getElementById('upload-hud-label');
+
+      if (isVideo) {
+        img.classList.add('hidden');
+        vid.src = url;
+        vid.classList.remove('hidden');
+        vid.play().catch(() => {});
+      } else {
+        vid.pause();
+        vid.classList.add('hidden');
+        img.src = url;
+        img.classList.remove('hidden');
+      }
+
+      hud.classList.remove('hidden');
+      hud.classList.toggle('danger', state.visionDanger);
+      hudLabel.className = state.visionDanger ? 'status-badge danger' : 'status-badge';
+      hudLabel.textContent = state.visionDanger ? '⚠ POTENTIAL HAZARD DETECTED (94.6%)' : '✓ MEDIA VERIFIED SAFE (98.1%)';
+
+      document.getElementById('back-to-cam-btn').classList.remove('hidden');
+      document.getElementById('cam-feed-title').textContent = `UPLOADED ${isVideo ? 'VIDEO' : 'IMAGE'} SCAN • ${file.name}`;
+
+      updateVisionCards();
+      syncAllViews();
+
+      if (state.visionDanger) {
+        addAlert('sensor', 'critical', 'UPLOADED MEDIA DANGER FLAGGED', `Vision AI detected threat cues inside "${file.name}".`);
+        startDeviceSpeakerCheckIn('Uploaded Media Hazard Detected');
+      }
+    }
+
+    function updateVisionCards() {
+      const card = document.getElementById('vision-summary-card');
+      const badge = document.getElementById('vision-badge');
+      const hudBadge = document.getElementById('cam-hud-badge');
+      const head = document.getElementById('vision-heading');
+      const desc = document.getElementById('vision-desc');
+      const list = document.getElementById('vision-objects-list');
+
+      if (state.visionDanger) {
+        card.className = 'card danger-card';
+        badge.textContent = 'DANGER';
+        badge.style.color = 'var(--rose)';
+        hudBadge.className = 'status-badge danger';
+        hudBadge.textContent = '⚠ HAZARD DETECTED';
+        head.style.color = 'var(--rose)';
+
+        if (state.cameraPreset === 'fall') {
+          head.textContent = 'Fall / Person Down Detected';
+          desc.textContent = 'Horizontal subject posture & rapid downward impact detected by wearable camera AI.';
+          list.innerHTML = `
+            <div class="detection-pill danger"><span>[ALERT] Person_Fallen</span><span>96.4%</span></div>
+            <div class="detection-pill"><span>[ENV] Ground_Impact_Zone</span><span>91.2%</span></div>
+          `;
+        } else if (state.cameraPreset === 'upload') {
+          head.textContent = 'Hazard Detected in Uploaded Media';
+          desc.textContent = `Frame analysis of "${state.uploadedName}" flagged high-risk visual danger indicators.`;
+          list.innerHTML = `
+            <div class="detection-pill danger"><span>[ALERT] Visual_Hazard_Cue</span><span>94.6%</span></div>
+            <div class="detection-pill"><span>[OBJ] Human_Subject</span><span>97.8%</span></div>
+          `;
+        } else {
+          head.textContent = 'Aggressive Approach / Crowd Hazard';
+          desc.textContent = 'Rapid close-range subject approach detected within 1.5m personal safety perimeter.';
+          list.innerHTML = `
+            <div class="detection-pill danger"><span>[ALERT] Rapid_Close_Approach</span><span>93.9%</span></div>
+            <div class="detection-pill"><span>[OBJ] Unknown_Subject</span><span>90.4%</span></div>
+          `;
+        }
+      } else {
+        card.className = 'card safe-card';
+        badge.textContent = 'SAFE';
+        badge.style.color = 'var(--emerald)';
+        hudBadge.className = 'status-badge';
+        hudBadge.textContent = '● CLEAR SCENE';
+        head.style.color = 'var(--emerald)';
+        head.textContent = state.cameraPreset === 'upload' ? 'Uploaded Media Verified Safe' : 'Normal Safe Street Environment';
+        desc.textContent = state.cameraPreset === 'upload'
+          ? `Deep frame scan of "${state.uploadedName}" found zero hazards, falls, or threats.`
+          : 'Upright pedestrian movement detected. Zero falls, collisions, or aggressive proximity hazards observed.';
+        list.innerHTML = `
+          <div class="detection-pill"><span>[SAFE] Upright_Walking_Pose</span><span>98.4%</span></div>
+          <div class="detection-pill"><span>[ENV] Clear_Pathway</span><span>96.1%</span></div>
+        `;
+      }
+    }
+
+    function animateVisionCanvas() {
+      if (!visionCanvas.classList.contains('hidden')) {
+        if (!visionCanvas.width) resizeVisionCanvas();
+        const w = visionCanvas.width;
+        const h = visionCanvas.height;
+        camTick += 0.04;
+
+        vCtx.fillStyle = '#060a13';
+        vCtx.fillRect(0, 0, w, h);
+
+        // Perspective Corridor
+        vCtx.strokeStyle = '#1e293b';
+        vCtx.lineWidth = 1.5;
+        vCtx.beginPath();
+        vCtx.moveTo(w * 0.5, h * 0.35); vCtx.lineTo(w * 0.08, h);
+        vCtx.moveTo(w * 0.5, h * 0.35); vCtx.lineTo(w * 0.92, h);
+        vCtx.stroke();
+
+        // Scanline
+        const sy = (camTick * 48) % h;
+        vCtx.fillStyle = state.visionDanger ? 'rgba(244, 63, 94, 0.09)' : 'rgba(16, 185, 129, 0.08)';
+        vCtx.fillRect(0, sy, w, 14);
+
+        const dx = Math.sin(camTick) * 14;
+        const dy = Math.cos(camTick * 1.4) * 6;
+
+        if (state.cameraPreset === 'fall') {
+          const bx = w * 0.25 + dx * 0.3, by = h * 0.58, bw = w * 0.5, bh = h * 0.24;
+          vCtx.strokeStyle = '#f43f5e'; vCtx.lineWidth = 2.5; vCtx.strokeRect(bx, by, bw, bh);
+          vCtx.fillStyle = '#e11d48'; vCtx.fillRect(bx, by - 22, 215, 22);
+          vCtx.fillStyle = '#fff'; vCtx.font = 'bold 11px monospace';
+          vCtx.fillText('⚠ FALL / PERSON DOWN 96.4%', bx + 6, by - 7);
+        } else if (state.cameraPreset === 'hazard') {
+          const bx = w * 0.34 + dx, by = h * 0.24 + dy, bw = w * 0.32, bh = h * 0.56;
+          vCtx.strokeStyle = '#f43f5e'; vCtx.lineWidth = 2.5; vCtx.strokeRect(bx, by, bw, bh);
+          vCtx.fillStyle = '#e11d48'; vCtx.fillRect(bx, by - 22, 215, 22);
+          vCtx.fillStyle = '#fff'; vCtx.font = 'bold 11px monospace';
+          vCtx.fillText('⚠ AGGRESSIVE APPROACH 93.9%', bx + 6, by - 7);
+        } else {
+          const bx = w * 0.38 + dx, by = h * 0.28 + dy, bw = w * 0.24, bh = h * 0.52;
+          vCtx.strokeStyle = '#10b981'; vCtx.lineWidth = 2; vCtx.strokeRect(bx, by, bw, bh);
+          vCtx.fillStyle = '#10b981'; vCtx.fillRect(bx, by - 20, 175, 20);
+          vCtx.fillStyle = '#022c22'; vCtx.font = 'bold 11px monospace';
+          vCtx.fillText('✓ SAFE POSTURE 98.4%', bx + 6, by - 6);
+        }
+      }
+      requestAnimationFrame(animateVisionCanvas);
+    }
+
+    /* -------------------- 9. SYNC & INIT -------------------- */
+    function syncAllViews() {
+      updateHeaderStatus();
+      updateTelemetry();
+      renderWifiTable();
+      renderAlertsList();
+      updateVisionCards();
+      evaluateAiFusion(false);
+      goToSlide(state.slide);
+    }
+
+    window.addEventListener('resize', () => {
+      resizePulseCanvas();
+      resizeVisionCanvas();
+      if (state.gpsUnlocked) drawMapCanvas();
+    });
+
+    window.onload = function () {
+      resizePulseCanvas();
+      animatePulseCanvas();
+      resizeVisionCanvas();
+      animateVisionCanvas();
+      syncAllViews();
+
+      setInterval(() => {
+        updateTelemetry();
+        if (state.gpsUnlocked) renderWifiTable();
+        if (state.slide === 3) evaluateAiFusion(false);
+      }, 2000);
+    };
+  </script>
+</body>
+</html>
